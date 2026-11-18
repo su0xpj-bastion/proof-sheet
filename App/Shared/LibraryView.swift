@@ -20,6 +20,19 @@ struct LibraryView: View {
             if !model.library.pending.isEmpty {
                 Text("Pending sync: \(model.library.pending.count)").font(.footnote).accessibilityIdentifier("pendingBadge")
             }
+            #if os(macOS)
+            // macOS: the sidebar toolbar overflows at this width and hides these, so they live here.
+            Section {
+                HStack {
+                    Button("Paste Edits") { model.pasteEditsToAllOtherPhotos(except: model.selection) }
+                        .disabled(model.clipboard == nil)
+                        .accessibilityIdentifier("pasteEdits")
+                    if model.options.uiTest {
+                        Button("Revoke Access") { model.revokeAccess() }.accessibilityIdentifier("simulateRevoke")
+                    }
+                }
+            }
+            #endif
             ForEach(model.visibleAssets) { asset in
                 NavigationLink(destination: EditorRouter(id: asset.id),
                                tag: asset.id, selection: $model.selection) {
@@ -29,6 +42,15 @@ struct LibraryView: View {
                 .accessibilityLabel(Text(asset.spokenName))
                 .accessibilityValue(asset.id)
             }
+            if UITestHooks.enabled {
+                // Instrumentation: asset IDs for deep-link tests. Rows are single buttons on macOS, so
+                // anything inside a row is not reachable; these sit outside the rows.
+                Section {
+                    ForEach(model.library.assets) { a in
+                        Text(a.id).font(.caption2).foregroundColor(.secondary).accessibilityIdentifier("assetID.\(a.name)")
+                    }
+                }
+            }
         }
         .navigationTitle(Text("Library"))
         .toolbar {
@@ -37,16 +59,20 @@ struct LibraryView: View {
                     .accessibilityIdentifier("importButton")
             }
             ToolbarItem {
+                #if os(iOS)
                 Button { model.pasteEditsToAllOtherPhotos(except: model.selection) } label: { Label("Paste Edits", systemImage: "doc.on.clipboard") }
                     .disabled(model.clipboard == nil)
                     .accessibilityIdentifier("pasteEdits")
+                #endif
             }
             ToolbarItem {
                 // Stands in for the user turning Photos access off in Settings while the app runs (UI tests only).
+                #if os(iOS)
                 if model.options.uiTest {
                     Button { model.revokeAccess() } label: { Label("Revoke Access", systemImage: "lock.slash") }
                         .accessibilityIdentifier("simulateRevoke")
                 }
+                #endif
             }
         }
         .sheet(isPresented: $showImport) { ImportSheet(isPresented: $showImport).environmentObject(model) }
@@ -97,14 +123,10 @@ struct AssetRow: View {
         HStack {
             Image(systemName: asset.kind == .video ? "film" : asset.kind == .livePhoto ? "livephoto" : "photo")
                 .accessibilityHidden(true)
-            Text(asset.name)
+            Text((asset.name as NSString).deletingPathExtension)
             Spacer()
             if asset.isEdited {
                 Text("Edited").font(.caption).foregroundColor(.secondary).accessibilityIdentifier("edited.\(asset.name)")
-            }
-            if UITestHooks.enabled {
-                // Instrumentation only: the asset ID, for deep-link tests (macOS outline rows drop accessibilityValue).
-                Text(asset.id).font(.caption2).foregroundColor(.secondary).accessibilityIdentifier("assetID.\(asset.name)")
             }
             if let review = asset.reviewStatus {
                 Text(review).font(.caption).foregroundColor(.secondary)

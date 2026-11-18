@@ -64,7 +64,7 @@ struct MacWindowSetup: ViewModifier {
     func body(content: Content) -> some View {
         #if os(macOS)
         return content
-            .frame(minWidth: 960, minHeight: 860)
+            .frame(minWidth: 900, minHeight: 600)
             .onAppear {
                 let args = ProcessInfo.processInfo.arguments
                 if let i = args.firstIndex(of: "-uitest-appearance"), args.count > i + 1 {
