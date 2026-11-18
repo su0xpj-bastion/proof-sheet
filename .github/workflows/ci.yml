@@ -21,6 +21,7 @@ jobs:
 
   web:
     name: Selenium (${{ matrix.browser }})
+    needs: proofkit
     runs-on: macos-latest
     timeout-minutes: 30
     strategy:
@@ -38,6 +39,8 @@ jobs:
 
   ui:
     name: XCUITest (${{ matrix.target }})
+    # Free accounts get about 5 concurrent macOS runners; 6 jobs at once left one never scheduled.
+    needs: proofkit
     runs-on: macos-latest
     timeout-minutes: 45
     strategy:

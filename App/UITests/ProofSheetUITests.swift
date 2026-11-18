@@ -333,15 +333,15 @@ final class ProofSheetUITests: XCTestCase {
                       "doubled strings pushed Export off screen: \(export.frame) in \(window)")
     }
 
-    func test_W41_darkAppearance() {
+    /// iOS: scripts/ci/ui.sh switches the simulator to dark with `simctl ui appearance dark` and runs
+    /// this test alone with PROOF_APPEARANCE=dark (XCUIDevice.appearance did not reach the app on CI).
+    func test_W41_darkAppearance() throws {
         #if os(iOS)
-        // Set the system appearance before launch: changing it under a running app is not
-        // delivered reliably on every simulator runtime.
-        XCUIDevice.shared.appearance = .dark
+        guard let want = ProcessInfo.processInfo.environment["PROOF_APPEARANCE"] else {
+            throw XCTSkip("run by scripts/ci/ui.sh with the simulator set to dark")
+        }
         launch(["-seed"])
-        expectText("appearanceProbe", contains: "dark")
-        XCUIDevice.shared.appearance = .light
-        expectText("appearanceProbe", contains: "light")
+        expectText("appearanceProbe", contains: want)
         #else
         launch(["-seed", "-AppleInterfaceStyle", "Dark"])
         expectText("appearanceProbe", contains: "dark")

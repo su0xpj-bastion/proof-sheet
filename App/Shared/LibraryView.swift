@@ -26,6 +26,7 @@ struct LibraryView: View {
                     AssetRow(asset: asset)
                 }
                 .accessibilityIdentifier("asset.\(asset.name)")
+                .accessibilityLabel(Text(asset.spokenName))
                 .accessibilityValue(asset.id)
             }
         }
@@ -43,7 +44,8 @@ struct LibraryView: View {
             ToolbarItem {
                 // Stands in for the user turning Photos access off in Settings while the app runs (UI tests only).
                 if model.options.uiTest {
-                    Button("Revoke") { model.revokeAccess() }.accessibilityIdentifier("simulateRevoke")
+                    Button { model.revokeAccess() } label: { Label("Revoke Access", systemImage: "lock.slash") }
+                        .accessibilityIdentifier("simulateRevoke")
                 }
             }
         }
@@ -75,6 +77,15 @@ struct FileDropAndPaste: ViewModifier {
         #else
         return content.onDrop(of: [UTType.fileURL], isTargeted: nil) { load($0); return true }
         #endif
+    }
+}
+
+extension Asset {
+    /// "Coordinates, photo, edited" rather than the file name "Coordinates.jpg".
+    var spokenName: String {
+        let base = (name as NSString).deletingPathExtension.replacingOccurrences(of: "_", with: " ")
+        let kindName = kind == .video ? "video" : kind == .livePhoto ? "Live Photo" : "photo"
+        return "\(base), \(kindName)" + (isEdited ? ", edited" : "")
     }
 }
 
