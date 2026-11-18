@@ -1,0 +1,9 @@
+.build/
+.venv/
+build/
+App/ProofSheet.xcodeproj/
+App/Generated/
+__pycache__/
+.pytest_cache/
+*.xcresult
+.DS_Store

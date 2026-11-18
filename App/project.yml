@@ -1,0 +1,99 @@
+# XcodeGen spec: `cd App && xcodegen` writes ProofSheet.xcodeproj (not committed).
+name: ProofSheet
+options:
+  bundleIdPrefix: com.proofsheet
+  deploymentTarget:
+    iOS: "17.0"
+    macOS: "14.0"
+  developmentLanguage: en
+packages:
+  ProofKit:
+    path: ..
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    CODE_SIGN_IDENTITY: "-"
+    CODE_SIGN_STYLE: Manual
+    DEVELOPMENT_TEAM: ""
+    ENABLE_USER_SCRIPT_SANDBOXING: NO
+    GENERATE_INFOPLIST_FILE: NO
+targets:
+  ProofSheet-iOS:
+    type: application
+    platform: iOS
+    sources: [Shared, Resources]
+    dependencies:
+      - package: ProofKit
+        product: ProofKit
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.proofsheet.app
+      PRODUCT_NAME: ProofSheet
+      TARGETED_DEVICE_FAMILY: "1,2"
+    info:
+      path: Generated/Info-iOS.plist
+      properties: &appInfo
+        CFBundleDisplayName: ProofSheet
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "1"
+        CFBundleLocalizations: [en, ar]
+        CFBundleURLTypes:
+          - CFBundleURLName: com.proofsheet.link
+            CFBundleURLSchemes: [proofsheet]
+        NSUserActivityTypes: [com.proofsheet.edit]
+        NSPhotoLibraryUsageDescription: ProofSheet edits the photos and videos you choose.
+        NSPhotoLibraryAddUsageDescription: ProofSheet saves exports to your library.
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+  ProofSheet-macOS:
+    type: application
+    platform: macOS
+    sources: [Shared, Resources]
+    dependencies:
+      - package: ProofKit
+        product: ProofKit
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.proofsheet.mac
+      PRODUCT_NAME: ProofSheet
+    info:
+      path: Generated/Info-macOS.plist
+      properties: *appInfo
+  ProofSheetUITests-iOS:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [UITests]
+    dependencies:
+      - target: ProofSheet-iOS
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.proofsheet.uitests.ios
+      TEST_TARGET_NAME: ProofSheet-iOS
+      GENERATE_INFOPLIST_FILE: YES
+  ProofSheetUITests-macOS:
+    type: bundle.ui-testing
+    platform: macOS
+    sources: [UITests]
+    dependencies:
+      - target: ProofSheet-macOS
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.proofsheet.uitests.mac
+      TEST_TARGET_NAME: ProofSheet-macOS
+      GENERATE_INFOPLIST_FILE: YES
+schemes:
+  ProofSheet-iOS:
+    build:
+      targets:
+        ProofSheet-iOS: all
+        ProofSheetUITests-iOS: [test]
+    test:
+      gatherCoverageData: true
+      targets: [ProofSheetUITests-iOS]
+  ProofSheet-macOS:
+    build:
+      targets:
+        ProofSheet-macOS: all
+        ProofSheetUITests-macOS: [test]
+    test:
+      gatherCoverageData: true
+      targets:
+        - ProofSheetUITests-macOS
+        - package: ProofKit/ProofKitTests

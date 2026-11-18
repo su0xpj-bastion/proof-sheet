@@ -1,0 +1,9 @@
+:root { color-scheme: light dark; font-family: -apple-system, system-ui, sans-serif; }
+body { margin: 0; padding: 16px; background: Canvas; color: CanvasText; }
+main { max-width: 900px; margin: 0 auto; }
+#stage { position: relative; display: inline-block; max-width: 100%; }
+#asset { display: block; max-width: 100%; height: auto; cursor: crosshair; }
+#pins { position: absolute; inset: 0; pointer-events: none; }
+.pin { position: absolute; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: #ff9f0a; border: 2px solid white; }
+button, input { font: inherit; padding: 6px 10px; margin: 4px 0; }
+label { display: block; margin-top: 12px; }

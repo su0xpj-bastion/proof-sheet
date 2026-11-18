@@ -1,0 +1,53 @@
+name: ci
+on: [push, pull_request, workflow_dispatch]
+concurrency: { group: "${{ github.workflow }}-${{ github.ref }}", cancel-in-progress: true }
+jobs:
+  proofkit:
+    name: ProofKit XCTest + fault matrix + coverage
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - run: sw_vers && swift --version && xcodebuild -version
+      - run: scripts/ci/unit.sh
+      - run: python3 -m venv .venv && .venv/bin/pip -q install -r requirements-dev.txt
+      - name: Fault matrix (Swift + pytest, Chrome) and workflow coverage
+        run: scripts/ci/matrix.sh
+      - name: CLT-only build path still works
+        run: BUILD_DIR=.build/clt scripts/build-local.sh list
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: proofkit-reports, path: build/reports }
+
+  web:
+    name: Selenium (${{ matrix.browser }})
+    runs-on: macos-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [safari, chrome]
+    steps:
+      - uses: actions/checkout@v4
+      - if: matrix.browser == 'safari'
+        run: sudo safaridriver --enable
+      - run: PROOF_BROWSER=${{ matrix.browser }} scripts/ci/web.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: "pytest-${{ matrix.browser }}", path: build/reports }
+
+  ui:
+    name: XCUITest (${{ matrix.target }})
+    runs-on: macos-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [ios-iphone, ios-ipad, macos]
+    steps:
+      - uses: actions/checkout@v4
+      - run: xcodebuild -version && xcrun simctl list runtimes
+      - run: scripts/ci/ui.sh ${{ matrix.target }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: "ui-${{ matrix.target }}", path: build/reports }
