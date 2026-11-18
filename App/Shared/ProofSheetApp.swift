@@ -1,5 +1,8 @@
 import ProofKit
 import SwiftUI
+#if os(macOS)
+import AppKit
+#endif
 
 @main
 struct ProofSheetApp: App {
@@ -39,6 +42,7 @@ struct ContentView: View {
             Text("Select a photo or video").foregroundColor(.secondary).accessibilityIdentifier("emptyEditor")
         }
         .overlay(probes, alignment: .bottomTrailing)
+        .modifier(MacWindowSetup())
     }
 
     /// Zero-size elements UI tests read to confirm appearance and layout direction.
@@ -49,6 +53,26 @@ struct ContentView: View {
         }
         .frame(width: 1, height: 1)
         .opacity(0.01)
-        .accessibilityHidden(false)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(Text("Appearance and layout"))
+    }
+}
+
+/// macOS: a window big enough for the editor, and a test-only appearance override
+/// (a UI test cannot change the Mac's system appearance).
+struct MacWindowSetup: ViewModifier {
+    func body(content: Content) -> some View {
+        #if os(macOS)
+        return content
+            .frame(minWidth: 960, minHeight: 860)
+            .onAppear {
+                let args = ProcessInfo.processInfo.arguments
+                if let i = args.firstIndex(of: "-uitest-appearance"), args.count > i + 1 {
+                    NSApp.appearance = NSAppearance(named: args[i + 1] == "dark" ? .darkAqua : .aqua)
+                }
+            }
+        #else
+        return content
+        #endif
     }
 }

@@ -77,7 +77,7 @@ struct PhotoEditorView: View {
             }
             .padding()
         }
-        .navigationTitle(Text(asset.name))
+        .navigationTitle(Text((asset.name as NSString).deletingPathExtension))
         .accessibilityIdentifier("editor.\(asset.name)")
         .onAppear(perform: render)
         .userActivity(Continuity.activityType) { activity in
@@ -276,7 +276,7 @@ struct VideoEditorView: View {
             }
             .padding()
         }
-        .navigationTitle(Text(asset.name))
+        .navigationTitle(Text((asset.name as NSString).deletingPathExtension))
         .accessibilityIdentifier("editor.\(asset.name)")
     }
 

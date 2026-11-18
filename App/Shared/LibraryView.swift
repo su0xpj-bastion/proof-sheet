@@ -80,6 +80,8 @@ struct FileDropAndPaste: ViewModifier {
     }
 }
 
+enum UITestHooks { static let enabled = ProcessInfo.processInfo.arguments.contains("-uitest") }
+
 extension Asset {
     /// "Coordinates, photo, edited" rather than the file name "Coordinates.jpg".
     var spokenName: String {
@@ -99,6 +101,10 @@ struct AssetRow: View {
             Spacer()
             if asset.isEdited {
                 Text("Edited").font(.caption).foregroundColor(.secondary).accessibilityIdentifier("edited.\(asset.name)")
+            }
+            if UITestHooks.enabled {
+                // Instrumentation only: the asset ID, for deep-link tests (macOS outline rows drop accessibilityValue).
+                Text(asset.id).font(.caption2).foregroundColor(.secondary).accessibilityIdentifier("assetID.\(asset.name)")
             }
             if let review = asset.reviewStatus {
                 Text(review).font(.caption).foregroundColor(.secondary)

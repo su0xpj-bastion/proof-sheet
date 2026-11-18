@@ -33,18 +33,58 @@ final class ProofSheetUITests: XCTestCase {
 
     func el(_ id: String) -> XCUIElement { app.descendants(matching: .any).matching(identifier: id).firstMatch }
 
+    /// Toolbar items on macOS surface by label, not by identifier.
+    static let labels = ["importButton": "Import", "pasteEdits": "Paste Edits", "simulateRevoke": "Revoke Access"]
+
     func wait(_ id: String, _ timeout: TimeInterval = 10, file: StaticString = #filePath, line: UInt = #line) -> XCUIElement {
-        let e = el(id)
-        XCTAssertTrue(e.waitForExistence(timeout: timeout), "\(id) never appeared", file: file, line: line)
+        var e = el(id)
+        if !e.waitForExistence(timeout: timeout), let label = Self.labels[id] {
+            e = app.buttons[label].firstMatch
+            _ = e.waitForExistence(timeout: 2)
+        }
+        if !e.exists {
+            // Show what the platform actually exposes, so the next fix is not a guess.
+            let tree = app.debugDescription
+            print("---- accessibility tree when \(id) was missing ----\n\(tree.prefix(6000))")
+            let a = XCTAttachment(string: tree)
+            a.name = "tree-\(id)"
+            a.lifetime = .keepAlways
+            add(a)
+        }
+        XCTAssertTrue(e.exists, "\(id) never appeared", file: file, line: line)
         return e
+    }
+
+    /// Scroll until the element can be hit (macOS XCUITest never auto-scrolls; iOS does not for every element type).
+    func reveal(_ e: XCUIElement) {
+        for _ in 0..<10 where !e.isHittable {
+            #if os(macOS)
+            app.scrollViews.firstMatch.scroll(byDeltaX: 0, deltaY: -250)
+            #else
+            app.scrollViews.firstMatch.swipeUp()
+            #endif
+        }
     }
 
     func tap(_ id: String, file: StaticString = #filePath, line: UInt = #line) {
         let e = wait(id, file: file, line: line)
+        reveal(e)
         #if os(macOS)
         e.click()
         #else
         e.tap()
+        #endif
+    }
+
+    /// Move a slider: drag on iOS; on macOS, focus it and step with the arrow keys (as a keyboard user would).
+    func nudge(_ id: String, steps: Int = 3) {
+        let s = wait(id)
+        reveal(s)
+        #if os(macOS)
+        s.click()
+        for _ in 0..<steps { s.typeKey(.rightArrow, modifierFlags: []) }
+        #else
+        s.adjust(toNormalizedSliderPosition: 0.75)
         #endif
     }
 
@@ -67,10 +107,13 @@ final class ProofSheetUITests: XCTestCase {
     func segment(_ title: String) {
         #if os(macOS)
         let radio = app.radioButtons[title].firstMatch
-        if radio.waitForExistence(timeout: 3) { radio.click(); return }
-        app.buttons[title].firstMatch.click()
+        let e = radio.waitForExistence(timeout: 3) ? radio : app.buttons[title].firstMatch
+        reveal(e)
+        e.click()
         #else
-        app.buttons[title].firstMatch.tap()
+        let e = app.buttons[title].firstMatch
+        reveal(e)
+        e.tap()
         #endif
     }
 
@@ -121,7 +164,8 @@ final class ProofSheetUITests: XCTestCase {
 
     #if os(macOS)
     func test_W04_pasteFileFromFinder() throws {
-        let url = URL(fileURLWithPath: "/tmp/proofsheet-paste-\(UUID().uuidString.prefix(6)).png")
+        // The UI test runner is sandboxed: write into its own temp folder (the app is not sandboxed and can read it).
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("proofsheet-paste-\(UUID().uuidString.prefix(6)).png")
         let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 64, pixelsHigh: 48, bitsPerSample: 8, samplesPerPixel: 4,
                                    hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)!
         try rep.representation(using: .png, properties: [:])!.write(to: url)
@@ -139,7 +183,7 @@ final class ProofSheetUITests: XCTestCase {
     func test_W07_W08_W09_adjustCropFilter() {
         launch(["-seed"])
         open("Coordinates.jpg")
-        wait("exposureSlider").adjust(toNormalizedSliderPosition: 0.75)
+        nudge("exposureSlider")
         expectText("recipeSummary", contains: "exposure")
         tap("rotateButton")
         expectText("recipeSummary", contains: "turns 1")
@@ -152,7 +196,7 @@ final class ProofSheetUITests: XCTestCase {
     func test_W10_undoRedoCompare() {
         launch(["-seed"])
         open("Coordinates.jpg")
-        wait("exposureSlider").adjust(toNormalizedSliderPosition: 0.8)
+        nudge("exposureSlider")
         expectText("recipeSummary", contains: "exposure")
         segment("Sepia")
         expectText("recipeSummary", contains: "filter sepia")
@@ -174,6 +218,7 @@ final class ProofSheetUITests: XCTestCase {
         open("Coordinates.jpg")
         tap("rotateButton")
         segment("Mono")
+        expectText("recipeSummary", contains: "filter mono")
         tap("revertButton")
         expectText("recipeSummary", contains: "original")
         tap("undoButton")
@@ -187,7 +232,10 @@ final class ProofSheetUITests: XCTestCase {
         tap("copyEditsButton")
         back()
         tap("pasteEdits")
-        _ = wait("edited.Chart.png")
+        let row = wait("asset.Chart.png")
+        let end = Date().addingTimeInterval(5)
+        while !row.label.contains("edited") && Date() < end { RunLoop.current.run(until: Date().addingTimeInterval(0.2)) }
+        XCTAssertTrue(row.label.contains("edited"), "paste did not edit Chart: \(row.label)")
     }
 
     // MARK: video
@@ -259,7 +307,7 @@ final class ProofSheetUITests: XCTestCase {
 
     func test_W36_deepLinkOpensAsset() throws {
         launch(["-seed"])
-        let id = wait("asset.Chart.png").value as? String ?? ""
+        let id = text("assetID.Chart.png")
         XCTAssertFalse(id.isEmpty, "row carries no asset id")
         if #available(iOS 16.4, macOS 13.3, *) {
             app.open(URL(string: "proofsheet://asset/\(id)")!)
@@ -319,7 +367,12 @@ final class ProofSheetUITests: XCTestCase {
     }
 
     func test_W40_rightToLeftAndLongStrings() {
+        #if os(macOS)
+        // AppKit takes direction from the language list only once localized resources load; force it too.
+        launch(["-seed", "-AppleLanguages", "(ar)", "-AppleLocale", "ar_SA", "-NSForceRightToLeftWritingDirection", "YES"])
+        #else
         launch(["-seed", "-AppleLanguages", "(ar)", "-AppleLocale", "ar_SA"])
+        #endif
         expectText("layoutProbe", contains: "rightToLeft")
         XCTAssertTrue(app.staticTexts["المكتبة"].waitForExistence(timeout: 5) || app.navigationBars["المكتبة"].exists
                       || app.windows["المكتبة"].exists, "Arabic title missing")
@@ -327,7 +380,7 @@ final class ProofSheetUITests: XCTestCase {
         launch(["-seed", "-NSDoubleLocalizedStrings", "YES"])
         open("Coordinates.jpg")
         let export = wait("exportButton")
-        for _ in 0..<6 where !export.isHittable { app.swipeUp() }
+        reveal(export)
         let window = app.windows.firstMatch.frame
         XCTAssertTrue(export.isHittable && window.contains(export.frame),
                       "doubled strings pushed Export off screen: \(export.frame) in \(window)")
@@ -343,7 +396,8 @@ final class ProofSheetUITests: XCTestCase {
         launch(["-seed"])
         expectText("appearanceProbe", contains: want)
         #else
-        launch(["-seed", "-AppleInterfaceStyle", "Dark"])
+        // A UI test cannot change the Mac's system appearance; the app honours a test-only override.
+        launch(["-seed", "-uitest-appearance", "dark"])
         expectText("appearanceProbe", contains: "dark")
         #endif
         let shot = XCTAttachment(screenshot: app.screenshot())
@@ -380,7 +434,7 @@ final class ProofSheetUITests: XCTestCase {
         launch(["-seedV1"])
         _ = wait("asset.Beach.jpg")
         _ = wait("asset.Portrait.jpg")
-        _ = wait("edited.Beach.jpg")
+        XCTAssertTrue(wait("asset.Beach.jpg").label.contains("edited"), "migrated edit not shown: \(el("asset.Beach.jpg").label)")
         expectText("pendingBadge", contains: "Pending sync: 1")
         open("Beach.jpg")
         expectText("recipeSummary", contains: "exposure 0.50")
