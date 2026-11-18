@@ -53,7 +53,8 @@ struct PhotoEditorView: View {
                 .pickerStyle(SegmentedPickerStyle())
                 .accessibilityIdentifier("filterPicker")
 
-                HStack {
+                // Adaptive grid, not HStack: long localizations wrap instead of pushing buttons off screen.
+                LazyVGrid(columns: buttonColumns, alignment: .leading) {
                     Button("Rotate") { set(\.quarterTurns, recipe.quarterTurns + 1) }.accessibilityIdentifier("rotateButton")
                     Button("Square") { set(\.crop, NormalizedRect.aspect(1, in: CGSize(width: asset.pixelWidth, height: asset.pixelHeight))) }
                         .accessibilityIdentifier("aspectSquare")
@@ -62,13 +63,13 @@ struct PhotoEditorView: View {
                 Toggle("Remove Location", isOn: Binding(get: { recipe.removeLocation }, set: { set(\.removeLocation, $0) }))
                     .accessibilityIdentifier("removeLocationToggle")
 
-                HStack {
+                LazyVGrid(columns: buttonColumns, alignment: .leading) {
                     Button("Undo") { history.undo(); sync() }.disabled(!history.canUndo).accessibilityIdentifier("undoButton")
                     Button("Redo") { history.redo(); sync() }.disabled(!history.canRedo).accessibilityIdentifier("redoButton")
                     Button("Revert") { history.revert(); sync() }.accessibilityIdentifier("revertButton")
                     Button(comparing ? "Show Edit" : "Compare") { comparing.toggle(); render() }.accessibilityIdentifier("compareButton")
                 }
-                HStack {
+                LazyVGrid(columns: buttonColumns, alignment: .leading) {
                     Button("Copy Edits") { model.clipboard = recipe }.accessibilityIdentifier("copyEditsButton")
                     Button("Export…") { showExport = true }.accessibilityIdentifier("exportButton")
                 }
@@ -87,6 +88,8 @@ struct PhotoEditorView: View {
             PhotoExportSheet(asset: asset, recipe: recipe, isPresented: $showExport).environmentObject(model)
         }
     }
+
+    let buttonColumns = [GridItem(.adaptive(minimum: 130), alignment: .leading)]
 
     func slider(_ title: String, _ key: WritableKeyPath<PhotoRecipe, Double>, _ range: ClosedRange<Double>, id: String) -> some View {
         VStack(alignment: .leading) {

@@ -90,7 +90,9 @@ final class ProofSheetUITests: XCTestCase {
         #if os(macOS)
         (up ? s.incrementArrows : s.decrementArrows).firstMatch.click()
         #else
-        s.buttons[up ? "Increment" : "Decrement"].firstMatch.tap()
+        // Stepper halves are found by label ("Increment"/"Decrement"), not identifier.
+        let half = s.buttons.matching(NSPredicate(format: "label == %@", up ? "Increment" : "Decrement")).firstMatch
+        (half.exists ? half : s.buttons.element(boundBy: up ? 1 : 0)).tap()
         #endif
     }
 
@@ -297,9 +299,23 @@ final class ProofSheetUITests: XCTestCase {
         #else
         launch(["-seed"])
         #endif
-        try app.performAccessibilityAudit()
+        try audit("library")
         open("Coordinates.jpg")
-        try app.performAccessibilityAudit()
+        try audit("editor")
+    }
+
+    /// Run the audit and report every issue with its element, so a failure says what to fix.
+    /// The two zero-size probes exist only so tests can read appearance and layout direction.
+    @available(iOS 17.0, macOS 14.0, *)
+    func audit(_ screen: String) throws {
+        var problems: [String] = []
+        try app.performAccessibilityAudit { issue in
+            let id = issue.element?.identifier ?? ""
+            if id == "appearanceProbe" || id == "layoutProbe" { return true }
+            problems.append("[\(screen)] \(issue.compactDescription): id='\(id)' label='\(issue.element?.label ?? "")' type=\(issue.element?.elementType.rawValue ?? 0)")
+            return true
+        }
+        XCTAssertTrue(problems.isEmpty, problems.joined(separator: "\n"))
     }
 
     func test_W40_rightToLeftAndLongStrings() {
@@ -310,13 +326,19 @@ final class ProofSheetUITests: XCTestCase {
         app.terminate()
         launch(["-seed", "-NSDoubleLocalizedStrings", "YES"])
         open("Coordinates.jpg")
-        XCTAssertTrue(wait("exportButton").isHittable, "doubled strings pushed Export off screen")
+        let export = wait("exportButton")
+        for _ in 0..<6 where !export.isHittable { app.swipeUp() }
+        let window = app.windows.firstMatch.frame
+        XCTAssertTrue(export.isHittable && window.contains(export.frame),
+                      "doubled strings pushed Export off screen: \(export.frame) in \(window)")
     }
 
     func test_W41_darkAppearance() {
         #if os(iOS)
-        launch(["-seed"])
+        // Set the system appearance before launch: changing it under a running app is not
+        // delivered reliably on every simulator runtime.
         XCUIDevice.shared.appearance = .dark
+        launch(["-seed"])
         expectText("appearanceProbe", contains: "dark")
         XCUIDevice.shared.appearance = .light
         expectText("appearanceProbe", contains: "light")

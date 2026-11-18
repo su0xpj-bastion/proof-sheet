@@ -4,5 +4,5 @@ set -euo pipefail
 cd "$(dirname "$0")/../.."
 mkdir -p build/reports
 swift build -c debug --product ps
-swift test --parallel=false 2>&1 | tee build/reports/swift-test.log
+swift test --no-parallel 2>&1 | tee build/reports/swift-test.log
 .build/debug/ps check
