@@ -5,17 +5,16 @@
 
 ## In plain English
 
-**What it is.** A small photo and video editor for iPhone, iPad and Mac, built to show how I test
+A small photo and video editor for iPhone, iPad and Mac, built to show how I test
 a creative app end to end. You can import, edit, export, share, sync to a cloud, and send a
 client a review link that they approve in a browser. I listed the **45 things people actually
 do** in an app like this, and every one has an automated test. The build fails if any workflow
 is left untested.
 
-**Why it matters.** Most bugs in creative apps hide in the joins between features. Two examples:
+Most bugs in creative apps hide in the joins between features. Two examples:
 an edit made offline on a phone gets silently lost when the Mac syncs, or a "remove location"
 option leaves GPS in the file. This repo tests those joins, not just single screens.
 
-**What I built.**
 - A SwiftUI app and a Swift library (Core Image editing, AVFoundation video, sync with conflict handling).
 - A small Python server for sync and the review page.
 - Tests at every layer:
@@ -26,13 +25,13 @@ option leaves GPS in the file. This repo tests those joins, not just single scre
   - A cross-device journey: edit on iPhone, render on Mac, approve on the web, see "approved" back on the iPhone.
 - One set of scripts that Jenkins, GitHub Actions and Xcode Cloud all run. 13 planted bugs, each proven caught.
 
-**What the tests caught while I built it.**
+Along the way, the tests turned up:
 - Ordinary photos exporting about 25% too dark.
 - Review videos that wouldn't play or scrub in Safari (missing HTTP range support).
 - A server request-parsing bug.
 - Buttons that VoiceOver users couldn't reach.
 
-**For a tech lead.** Swift, SwiftUI, Core Image, AVFoundation, ImageIO, XCTest, XCUITest
+Swift, SwiftUI, Core Image, AVFoundation, ImageIO, XCTest, XCUITest
 (including the accessibility audit), Python, pytest, Selenium, Jenkins, GitHub Actions and Xcode
 Cloud. Status is honest: see the badge. The unit, server and browser jobs run first, and the
 UI-robot jobs are the last to stabilise on CI.
@@ -146,7 +145,7 @@ scripts/ci/ui.sh ios-iphone           # XCUITest (needs Xcode + brew xcodegen); 
 <!-- set:begin -->
 ---
 
-**Part of a set.** Six small projects, one idea: test media apps with data that carries its own answer, and prove every test catches the bug it was written for.
+Six small projects, one idea: test media apps with data that carries its own answer, and prove every test catches the bug it was written for.
 
 - [frame-exact](https://github.com/su0xpj-bastion/frame-exact): timecode and edit maths, to the frame
 - [barcode-frames](https://github.com/su0xpj-bastion/barcode-frames): real video edits checked frame by frame
