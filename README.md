@@ -1,5 +1,47 @@
 # proof-sheet
 
+<!-- plain-english:begin -->
+[![ci](https://github.com/su0xpj-bastion/proof-sheet/actions/workflows/ci.yml/badge.svg)](https://github.com/su0xpj-bastion/proof-sheet/actions/workflows/ci.yml)
+
+## In plain English
+
+**What it is.** A small photo and video editor for iPhone, iPad and Mac, built to show how I test
+a creative app end to end. You can import, edit, export, share, sync to a cloud, and send a
+client a review link that they approve in a browser. I listed the **45 things people actually
+do** in an app like this, and every one has an automated test. The build fails if any workflow
+is left untested.
+
+**Why it matters.** Most bugs in creative apps hide in the joins between features. Two examples:
+an edit made offline on a phone gets silently lost when the Mac syncs, or a "remove location"
+option leaves GPS in the file. This repo tests those joins, not just single screens.
+
+**What I built.**
+- A SwiftUI app and a Swift library (Core Image editing, AVFoundation video, sync with conflict handling).
+- A small Python server for sync and the review page.
+- Tests at every layer:
+  - XCTest for the logic.
+  - XCUITest robots tapping through the app on iPhone, iPad and Mac.
+  - pytest for the server.
+  - Selenium driving the review page in Safari and Chrome.
+  - A cross-device journey: edit on iPhone, render on Mac, approve on the web, see "approved" back on the iPhone.
+- One set of scripts that Jenkins, GitHub Actions and Xcode Cloud all run. 13 planted bugs, each proven caught.
+
+**What the tests caught while I built it.**
+- Ordinary photos exporting about 25% too dark.
+- Review videos that wouldn't play or scrub in Safari (missing HTTP range support).
+- A server request-parsing bug.
+- Buttons that VoiceOver users couldn't reach.
+
+**For a tech lead.** Swift, SwiftUI, Core Image, AVFoundation, ImageIO, XCTest, XCUITest
+(including the accessibility audit), Python, pytest, Selenium, Jenkins, GitHub Actions and Xcode
+Cloud. Status is honest: see the badge. The unit, server and browser jobs run first, and the
+UI-robot jobs are the last to stabilise on CI.
+
+---
+
+## Technical detail
+<!-- plain-english:end -->
+
 A small photo and video editor for iOS and macOS (SwiftUI), with cloud sync and a web review
 page (Python). It is built to be tested: **45 workflows** of a creative app
 ([WORKFLOWS.md](WORKFLOWS.md)), each covered by at least one test in **XCTest**, **XCUITest**,
@@ -100,3 +142,16 @@ scripts/ci/ui.sh ios-iphone           # XCUITest (needs Xcode + brew xcodegen); 
 - The DNG fixture is a minimal Linear DNG written byte by byte, because ImageIO cannot write DNG. It exercises the RAW decode path, not a real camera's colour-filter-array (CFA) data.
 - Video exported through `AVAssetExportSession` after a speed change is variable frame rate (see barcode-frames). The speed check therefore runs on the preview, conformed to 29.97.
 - Xcode Server was removed in Xcode 13. `ci/xcode-server/` documents the bot setup on the shared schemes, and Xcode Cloud replaces it.
+
+<!-- set:begin -->
+---
+
+**Part of a set.** Six small projects, one idea: test media apps with data that carries its own answer, and prove every test catches the bug it was written for.
+
+- [frame-exact](https://github.com/su0xpj-bastion/frame-exact): timecode and edit maths, to the frame
+- [barcode-frames](https://github.com/su0xpj-bastion/barcode-frames): real video edits checked frame by frame
+- **[proof-sheet](https://github.com/su0xpj-bastion/proof-sheet)**: a photo/video app with all 45 workflows tested
+- [enact-probe](https://github.com/su0xpj-bastion/enact-probe): live AI video, measured the way the viewer feels it
+- [vision-gate](https://github.com/su0xpj-bastion/vision-gate): report cards for on-device AI photo features
+- [timeline-ml](https://github.com/su0xpj-bastion/timeline-ml): beat detection and transcript search
+<!-- set:end -->
