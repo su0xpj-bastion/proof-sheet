@@ -129,7 +129,7 @@ scripts/ci/ui.sh ios-iphone           # XCUITest (needs Xcode + brew xcodegen); 
   - Fault matrix: all 13 faults caught by exactly their pinned tests.
   - Workflow coverage: 45/45.
   - The macOS app builds with `swiftc`, launches and seeds its library.
-- **CI-only:** XCTest, XCUITest, Safari and iOS-Simulator Safari need Xcode, so they run in `.github/workflows/ci.yml`.
+- **CI-only:** XCTest, XCUITest, Safari and iOS-Simulator Safari need Xcode, so they run in `.github/workflows/ci.yml`. iPhone and iPad XCUITest block the build. macOS XCUITest runs on every push but is quarantined, because hosted VMs lose app focus mid-suite (see [BUGS.md](BUGS.md)).
 - **Jenkins:** the pipeline ran on a real Jenkins 2.580.2 (build #1: SUCCESS, 56 tests, release bundle archived). Evidence is in [docs/jenkins](docs/jenkins/README.md). It needs these plugins: Pipeline, Git, JUnit, Timestamper, Lockable Resources.
 
 ## Honest limits

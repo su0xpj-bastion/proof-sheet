@@ -64,7 +64,15 @@ final class ProofSheetUITests: XCTestCase {
             #if os(macOS)
             app.scrollViews.firstMatch.scroll(byDeltaX: 0, deltaY: -250)
             #else
-            app.scrollViews.firstMatch.swipeUp()
+            if UIDevice.current.userInterfaceIdiom == .phone {
+                // On iPhone the pushed editor fills the window, but scrollViews.firstMatch can be a
+                // different scroll view (W40 left Export at y=1091 of 912). Drag the window itself.
+                let w = app.windows.firstMatch
+                w.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.8))
+                    .press(forDuration: 0.05, thenDragTo: w.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3)))
+            } else {
+                app.scrollViews.firstMatch.swipeUp()
+            }
             #endif
         }
     }
@@ -363,6 +371,8 @@ final class ProofSheetUITests: XCTestCase {
         try app.performAccessibilityAudit { issue in
             let id = issue.element?.identifier ?? ""
             if id == "appearanceProbe" || id == "layoutProbe" { return true }
+            // Asset-ID labels exist only in UI-test launches (deep-link instrumentation), never for users.
+            if id.hasPrefix("assetID.") { return true }
             // iPadOS sidebar: the selected row's text uses the system selection colours. Logged, not failed.
             if issue.auditType == .contrast, ["Coordinates", "Chart", "Clip", "Coordinates.jpg"].contains(issue.element?.label ?? "") {
                 print("audit (system selection style, not failed): \(issue.compactDescription) '\(issue.element?.label ?? "")'")

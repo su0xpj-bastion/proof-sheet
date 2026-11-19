@@ -43,6 +43,10 @@ jobs:
     needs: proofkit
     runs-on: macos-latest
     timeout-minutes: 45
+    # macOS XCUITest is quarantined on hosted runners: the runner's login session loses foreground
+    # ("Application ... is not foreground and does not allow background interaction"), so failures
+    # there measure the VM, not the app. It still runs and uploads results; see BUGS.md.
+    continue-on-error: ${{ matrix.target == 'macos' }}
     strategy:
       fail-fast: false
       matrix:
