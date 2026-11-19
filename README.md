@@ -3,8 +3,6 @@
 <!-- plain-english:begin -->
 [![ci](https://github.com/su0xpj-bastion/proof-sheet/actions/workflows/ci.yml/badge.svg)](https://github.com/su0xpj-bastion/proof-sheet/actions/workflows/ci.yml)
 
-## In plain English
-
 A small photo and video editor for iPhone, iPad and Mac, built to show how I test
 a creative app end to end. You can import, edit, export, share, sync to a cloud, and send a
 client a review link that they approve in a browser. I listed the **45 things people actually
