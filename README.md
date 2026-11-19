@@ -34,7 +34,7 @@ Swift, SwiftUI, Core Image, AVFoundation, ImageIO, XCTest, XCUITest
 Cloud. Status is honest: see the badge. The unit, server and browser jobs run first, and the
 UI-robot jobs are the last to stabilise on CI.
 
-[Test strategy](docs/TEST_STRATEGY.md) · [Test plan](docs/TEST_PLAN.md) · [Release report](docs/RELEASE_REPORT.md) · [Workflows and priorities](WORKFLOWS.md) · [Bugs found](BUGS.md)
+[Test strategy](docs/TEST_STRATEGY.md) · [Test plan](docs/TEST_PLAN.md) · [Release report](docs/RELEASE_REPORT.md) · [Workflows and priorities](WORKFLOWS.md) · [Bugs found](BUGS.md) · [Jenkins run](docs/jenkins/README.md)
 
 ---
 
@@ -130,7 +130,7 @@ scripts/ci/ui.sh ios-iphone           # XCUITest (needs Xcode + brew xcodegen); 
   - Workflow coverage: 45/45.
   - The macOS app builds with `swiftc`, launches and seeds its library.
 - **CI-only:** XCTest, XCUITest, Safari and iOS-Simulator Safari need Xcode, so they run in `.github/workflows/ci.yml`.
-- **Not run:** the Jenkinsfile has not been executed on a Jenkins server. Its stages are the same scripts CI runs. It needs these plugins: Pipeline, Lockable Resources, Timestamper, JUnit.
+- **Jenkins:** the pipeline ran on a real Jenkins 2.580.2 (build #1: SUCCESS, 56 tests, release bundle archived). Evidence is in [docs/jenkins](docs/jenkins/README.md). It needs these plugins: Pipeline, Git, JUnit, Timestamper, Lockable Resources.
 
 ## Honest limits
 
