@@ -17,15 +17,21 @@ import ProofKit
 let args = Array(CommandLine.arguments.dropFirst())
 let cmd = args.first ?? "check"
 
+struct CaseResult { let name: String; let workflows: [String]; let seconds: Double; let failure: String? }
+var results: [CaseResult] = []
+
 func runChecks(_ names: [String]) -> [String] {
     var failed: [String] = []
     for c in Checks.all where names.isEmpty || names.contains(c.name) {
         let t = Date()
         do {
             try c.run()
-            print(String(format: "  PASS  %-32@ %@  %.1fs", c.name, c.workflows.joined(separator: ","), Date().timeIntervalSince(t)))
+            let s = Date().timeIntervalSince(t)
+            results.append(CaseResult(name: c.name, workflows: c.workflows, seconds: s, failure: nil))
+            print(String(format: "  PASS  %-32@ %@  %.1fs", c.name, c.workflows.joined(separator: ","), s))
         } catch {
             failed.append(c.name)
+            results.append(CaseResult(name: c.name, workflows: c.workflows, seconds: Date().timeIntervalSince(t), failure: "\(error)"))
             print(String(format: "  FAIL  %-32@ %@  %@", c.name, c.workflows.joined(separator: ","), "\(error)"))
         }
         fflush(stdout)
@@ -33,10 +39,33 @@ func runChecks(_ names: [String]) -> [String] {
     return failed
 }
 
+/// JUnit XML so Jenkins (and Xcode Cloud / GitHub) show each workflow check as its own test.
+func writeJUnit(_ path: String) {
+    func esc(_ s: String) -> String {
+        s.replacingOccurrences(of: "&", with: "&amp;").replacingOccurrences(of: "<", with: "&lt;")
+            .replacingOccurrences(of: ">", with: "&gt;").replacingOccurrences(of: "\"", with: "&quot;")
+    }
+    let fails = results.filter { $0.failure != nil }.count
+    var x = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+    x += "<testsuite name=\"proof-sheet workflow checks\" tests=\"\(results.count)\" failures=\"\(fails)\" time=\"\(results.reduce(0) { $0 + $1.seconds })\">\n"
+    for r in results {
+        x += "  <testcase classname=\"workflows.\(esc(r.workflows.joined(separator: "_")))\" name=\"\(esc(r.name))\" time=\"\(String(format: "%.3f", r.seconds))\">"
+        if let f = r.failure { x += "<failure message=\"\(esc(f))\"/>" }
+        x += "</testcase>\n"
+    }
+    x += "</testsuite>\n"
+    try? FileManager.default.createDirectory(atPath: (path as NSString).deletingLastPathComponent, withIntermediateDirectories: true)
+    try? x.write(toFile: path, atomically: true, encoding: .utf8)
+}
+
 switch cmd {
 case "check":
-    let names = Array(args.dropFirst())
+    var rest = Array(args.dropFirst())
+    var junit: String?
+    if let i = rest.firstIndex(of: "--junit"), i + 1 < rest.count { junit = rest[i + 1]; rest.removeSubrange(i...(i + 1)) }
+    let names = rest
     let failed = runChecks(names)
+    if let j = junit { writeJUnit(j) }
     let total = names.isEmpty ? Checks.all.count : names.count
     print("\(total - failed.count)/\(total) checks passed" + (FaultInjection.active.isEmpty ? "" : "  [faults: \(FaultInjection.active.map { $0.rawValue }.sorted().joined(separator: ","))]"))
     exit(failed.isEmpty ? 0 : 1)

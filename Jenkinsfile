@@ -1,8 +1,9 @@
-// proof-sheet pipeline. Needs a macOS agent labelled 'xcode' (Xcode + simulators + Safari);
-// the Linux-capable stages (API + Selenium/Chrome) can run on any agent with Python 3 and Chrome.
+// proof-sheet pipeline: build → test → fault matrix → package (delivery).
+// Runs on any macOS agent labelled 'macos'. With Xcode it also runs XCTest, XCUITest (iPhone, iPad,
+// Mac) and archives the app; on a Command Line Tools-only agent those stages are skipped, visibly.
 // Every stage calls a script in scripts/ci/, the same scripts GitHub Actions runs, so the two never drift.
 pipeline {
-  agent { label 'xcode' }
+  agent { label 'macos' }
   options {
     timestamps()
     timeout(time: 60, unit: 'MINUTES')
@@ -10,8 +11,8 @@ pipeline {
     disableConcurrentBuilds()
   }
   parameters {
-    booleanParam(name: 'RUN_UI', defaultValue: true, description: 'Run XCUITest on iPhone, iPad and macOS')
-    choice(name: 'BROWSER', choices: ['safari', 'chrome', 'ios-safari'], description: 'Selenium browser for the review page')
+    choice(name: 'BROWSER', choices: ['chrome', 'safari', 'ios-safari'], description: 'Selenium browser (safari needs `sudo safaridriver --enable` once per agent)')
+    booleanParam(name: 'RUN_UI', defaultValue: true, description: 'Run XCUITest when the agent has Xcode')
   }
   environment {
     PROOF_WORK = "${WORKSPACE}/.build/proof-work"
@@ -19,42 +20,41 @@ pipeline {
   stages {
     stage('Toolchain') {
       steps {
-        sh 'sw_vers && xcodebuild -version && swift --version && python3 --version'
+        sh 'sw_vers && swift --version && python3 --version'
+        script {
+          env.HAS_XCODE = sh(script: 'bash -c "source scripts/ci/env.sh && echo \\$HAS_XCODE"', returnStdout: true).trim()
+          echo "Xcode on this agent: ${env.HAS_XCODE == '1' ? 'yes' : 'no (Command Line Tools only): Xcode-only stages are skipped'}"
+        }
       }
     }
-    stage('ProofKit XCTest') {
+    stage('Build + workflow checks') {
       steps { sh 'scripts/ci/unit.sh' }
     }
     stage('Cloud API + review page') {
-      steps {
-        // safaridriver must be enabled once per agent: sudo safaridriver --enable
-        sh "PROOF_BROWSER=${params.BROWSER} scripts/ci/web.sh"
-      }
-      post { always { junit allowEmptyResults: true, testResults: 'build/reports/pytest-*.xml' } }
+      steps { sh "PROOF_BROWSER=${params.BROWSER} scripts/ci/web.sh" }
     }
     stage('XCUITest') {
-      when { expression { params.RUN_UI } }
+      when { expression { params.RUN_UI && env.HAS_XCODE == '1' } }
       parallel {
         stage('iPhone') { steps { sh 'scripts/ci/ui.sh ios-iphone' } }
         stage('iPad') { steps { sh 'scripts/ci/ui.sh ios-ipad' } }
-        stage('macOS') {
-          // Two runs on one agent would fight over the screen: macOS UI tests take a lock.
-          steps { lock('mac-ui') { sh 'scripts/ci/ui.sh macos' } }
-        }
+        stage('macOS') { steps { lock('mac-ui') { sh 'scripts/ci/ui.sh macos' } } }
       }
     }
     stage('Fault matrix + workflow coverage') {
       steps { sh 'scripts/ci/matrix.sh' }
     }
+    stage('Package') {
+      steps {
+        sh 'scripts/ci/package.sh'
+        archiveArtifacts artifacts: 'dist/*.tar.gz, dist/*.sha256', fingerprint: true
+      }
+    }
   }
   post {
     always {
+      junit allowEmptyResults: true, testResults: 'build/reports/*.xml'
       archiveArtifacts allowEmptyArchive: true, artifacts: 'build/reports/**'
-      // xcresult bundles open in Xcode; JUnit for the Jenkins test view comes from xcresulttool if installed.
-      sh 'for r in build/reports/*.xcresult; do [ -d "$r" ] && xcrun xcresulttool get test-results summary --path "$r" > "$r.summary.json" || true; done'
-    }
-    failure {
-      echo 'Open build/reports/*.xcresult in Xcode for screenshots of each failing UI test.'
     }
   }
 }
