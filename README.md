@@ -34,6 +34,8 @@ Swift, SwiftUI, Core Image, AVFoundation, ImageIO, XCTest, XCUITest
 Cloud. Status is honest: see the badge. The unit, server and browser jobs run first, and the
 UI-robot jobs are the last to stabilise on CI.
 
+[Test strategy](docs/TEST_STRATEGY.md) · [Test plan](docs/TEST_PLAN.md) · [Release report](docs/RELEASE_REPORT.md) · [Workflows and priorities](WORKFLOWS.md) · [Bugs found](BUGS.md)
+
 ---
 
 ## Technical detail
